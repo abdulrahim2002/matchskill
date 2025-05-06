@@ -2,10 +2,10 @@
 
 Overview of the research project:
 
-1. Domain labels can be generated for open issues reliably, [santos et.
-   al.](https://ieeexplore.ieee.org/abstract/document/9463078/), however
-   it is still on the onus of the developer to find a task they can work
-   on
+1. Domain labels can be generated for open issues reliably, [ [santos
+   et.  al.] ](https://ieeexplore.ieee.org/abstract/document/9463078/),
+   however it is still on the onus of the developer to find a task they
+   can work on
 2. This project aims to automatically match contributors to issues they
    are capable of solving, based on their contribution history
 
@@ -13,17 +13,17 @@ Overview of the research project:
 
 - Generate domain labels for closed issues using existing models
 - Generate developer profiles using contribution history of the
-  developer, using data of issues they solved in the past and the domain
-  labels associated with them
-- Find open issues a particular developer is capable of solving based on
-  their profile
+  developer, using data of issues they've solved in the past and the
+  domain labels associated with them
+- Find open issues a particular developer is capable of solving, based
+  on their profile
 - Or alternatively, find developers who can solve a particular open
   issue
 
 ## Current capabilities
 
 - We can generate ground truth using spacy library, and use the random
-  forest model to predict issues both open and closed. [Code is in this
+  forest model to predict issues (both open and closed). [Code is in this
   notebook](RF_predictions_with_GT_by_spacy.ipynb)
 - We can generate frequency of domain labels, each developer engaged in.
   That is, we can generate mapping of:
@@ -33,7 +33,7 @@ Overview of the research project:
   for each developer and domain
 
   This mapping can help us to determine weather a particular developer
-  is fit for solving issues of a particular domain. Please see [example
+  is fit for a particular task. Please see [example
   output](output/JabRef_JabRef_developer_stastics.csv)
 
 ### Installation and running the code
@@ -47,9 +47,8 @@ The following changes are made to the Core Engine:
    model
 2. Abstract syntax tree can now be generated on the fly, rather than
    first downloading the file from github and then running the AST
-   generation program on the downloaded file. It can now be directly
-   passed the AST generate function as a string and it would return the
-   AST object
+   generation function on the downloaded file. It can now be directly
+   passed the AST generation function as a string.
 3. Some of the functionalities might not work as expected 
 
 ### Running the notebooks
@@ -68,7 +67,7 @@ Activate the virtual environment:
 source {path_to_you_virutal_environment}/bin/activate
 ```
 
-Install ipykernel and jupyter (for running noteboooks) lab:
+Install ipykernel and jupyter lab (for running noteboooks):
 
 ```
 # run after activating your virtual environment
@@ -92,7 +91,26 @@ jupyter-lab
 ## To generate developer stastics
 
 - Either directly run the
-  [get_developer_stastics.py](src/get_developer_stats.py) file or 
+  [get_developer_stastics.py](src/get_developer_stats.py) file with
+
+```
+# actuvate venv
+python get_developer_stats.py /path_to_your_config.json
+```
+
+Here's an example config:
+
+``` json
+{
+    "github_token": "#github token",
+    "repo_owner": "JabRef",
+    "repo_name": "JabRef",
+    "openai_key": "#open ai api key",
+    "limit" : "100"
+}
+```
+
+or 
 - Use as an API from CoreEngine
 
 ``` python
@@ -117,7 +135,8 @@ data_frame = CoreEngine.get_developer_stats( repo_owner = "jabref",
 4. Set up a configuration file for training like below (see [example
    pre-filled configuration](/input/config_example.json) for default)
 5. Set an environment variable in a `.env` file with the
-   `OPENAI_API_KEY` set to an OpenAI key # NOT REQUIRED FOR RF MODEL 
+   `OPENAI_API_KEY` set to an OpenAI key ( Note: NOT REQUIRED FOR the RF
+   MODEL )
 6. Place a GitHub key in a file located at `auth_path` as specified in
    the `config.json`. (Default: `input/mp_auth.txt`)
 7. Run `poetry run python3 main.py path/to/config.json` where the json
@@ -137,7 +156,6 @@ delete `main.db`, except when switching repositories. `main.db` caches
 all extracted data to prevent re-download.
 
 
-> ### Note on opening CSV files in the project: None of the CSV files
-> ### would open in regular csv readers. Because the CSV's are delimited
-> ### by '\a'. It is recommended to load them in dataframe, to see their
-> ### contents or use them
+> ### Note: Some CSV files in the project might not open in your regular
+> ### editor. This is because, they are delimited by "\a". It is recommended
+> ### that you load them as dataframe.
