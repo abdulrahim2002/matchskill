@@ -24,7 +24,8 @@ Overview of the research project:
 
 - We can generate ground truth using spacy library, and use the random
   forest model to predict issues (both open and closed). [Code is in this
-  notebook](RF_predictions_with_GT_by_spacy.ipynb)
+  notebook](RF_predictions_with_GT_by_spacy.ipynb). See [example output]
+  (output/ground_truth_with_RF_prediction.csv).
 - We can generate frequency of domain labels, each developer engaged in.
   That is, we can generate mapping of:
 
