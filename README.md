@@ -2,7 +2,7 @@
 
 Overview of the research project:
 
-1. Domain labels can be generated for open issues reliably, [ [santos
+1. Domain labels can be generated for open issues reliably [ [santos
    et.  al.] ](https://ieeexplore.ieee.org/abstract/document/9463078/),
    however it is still on the onus of the developer to find a task they
    can work on
