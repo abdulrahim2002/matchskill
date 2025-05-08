@@ -1,0 +1,358 @@
+Issue_NumberPR_NumberIssue_TitleIssue_BodyIssue_CommentsPR_TitlePR_BodyPR_CommentsPR_Author_NamePR_Author_UsernamePR_Closed_Date
+633634README file contains broken linksFor the Gson user guide and design.Correct 'user guide' and 'design document' Markdown links.Closes #633. Jake WhartonJakeWharton04/13/15, 04:40:22 PM
+687688Add METHOD Target to SerializedName attribute"I'm in the process of making an AutoValue extension that will generate a Gson TypeAdapterFactory for generated data types, and I'd like to support `@SerializedName`.  Currently, the attribute only targets `ElementType.FIELD`s, meaning users can't put it on the abstract property methods that AutoValue uses.  I'd like to have `ElementType.METHOD` added to the list of supported `ElementType`s so that I don't have to include a separate annotation for AutoValue users.
+
+Here is what the user's class would look like in this case:
+
+``` java
+@AutoValue public abstract class Foo {
+  @SerializedName(""Baz"") public abstract String baz();
+}
+```"Add METHOD target for use with AutoValue's abstract property methodsCloses #687 Michael EvansMichaelEvans08/14/15, 10:58:18 PM
+768769ISO8601 is not fully implemented"Hi guys,
+
+I'm working on a project where I have to parse `2016-01-11T11:06:14.000-02` to java.util.Date which is a valid date according to [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) on page 12.
+
+But I got an Exception trying to archive it
+
+```
+Caused by: com.google.gson.JsonSyntaxException: 2016-01-11T11:06:14.000-02
+        at com.google.gson.DefaultDateTypeAdapter.deserializeToDate(DefaultDateTypeAdapter.java:107)
+        at com.google.gson.DefaultDateTypeAdapter.deserialize(DefaultDateTypeAdapter.java:84)
+        at com.google.gson.DefaultDateTypeAdapter.deserialize(DefaultDateTypeAdapter.java:38)
+        at com.google.gson.TreeTypeAdapter.read(TreeTypeAdapter.java:58)
+        at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$1.read(ReflectiveTypeAdapterFactory.java:117)
+        at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:217)
+        at com.google.gson.internal.bind.TypeAdapterRuntimeTypeWrapper.read(TypeAdapterRuntimeTypeWrapper.java:40)
+        at com.google.gson.internal.bind.CollectionTypeAdapterFactory$Adapter.read(CollectionTypeAdapterFactory.java:82)
+        at com.google.gson.internal.bind.CollectionTypeAdapterFactory$Adapter.read(CollectionTypeAdapterFactory.java:61)
+        at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$1.read(ReflectiveTypeAdapterFactory.java:117)
+        at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:217)
+        at com.google.gson.Gson.fromJson(Gson.java:861)
+        at com.google.gson.Gson.fromJson(Gson.java:926)
+        at com.google.gson.Gson.fromJson(Gson.java:899)
+        at ...
+Caused by: java.text.ParseException: Failed to parse date [""2016-01-11T11:06:14.000-02']: Mismatching time zone indicator: GMT-02 given, resolves to GMT-02:00
+        at com.google.gson.internal.bind.util.ISO8601Utils.parse(ISO8601Utils.java:270)
+        at com.google.gson.DefaultDateTypeAdapter.deserializeToDate(DefaultDateTypeAdapter.java:105)
+        ... 31 more
+Caused by: java.lang.IndexOutOfBoundsException: Mismatching time zone indicator: GMT-02 given, resolves to GMT-02:00
+        at com.google.gson.internal.bind.util.ISO8601Utils.parse(ISO8601Utils.java:236)
+        ... 32 more
+```
+
+I'm able to fix this if it sounds reasonable.""Does using the `UtcDateTypeAdapter` work? https://github.com/google/gson/blob/master/extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java
+ =||= It doesn't seem to work:
+
+``` java
+public class Bla {
+        private Date createdAt;
+
+        public Date getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(Date createdAt) {
+            this.createdAt = createdAt;
+        }
+    }
+```
+
+registering adapter:
+
+``` java
+public class GsonFactory {
+
+    public Gson getGson(){
+
+        GsonBuilder gsonBuilder = new GsonBuilder();
+
+        return gsonBuilder.registerTypeAdapter(Date.class, new UtcDateTypeAdapter()).create();
+    }
+}
+```
+
+test case:
+
+``` java
+public class GsonFactoryTest {
+
+    @Test
+    public void dateShouldBeParsed() throws Exception {
+        GsonFactory gsonFactory = new GsonFactory();
+        Gson gson = gsonFactory.getGson();
+
+        Bla bla = gson.fromJson(""{\""createdAt\"": \""2016-01-08T17:29:05.730-02\""}"", Bla.class);
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(bla.getCreatedAt());
+
+        assertEquals(2016, calendar.get(Calendar.YEAR));
+    }
+}
+```
+
+and the return:
+
+```
+com.google.gson.JsonParseException: java.text.ParseException: Failed to parse date [""2016-01-08T17:29:05.730-02']: null
+    at notificador.domain.config.factory.UtcDateTypeAdapter.read(UtcDateTypeAdapter.java:60)
+    at notificador.domain.config.factory.UtcDateTypeAdapter.read(UtcDateTypeAdapter.java:33)
+    at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$1.read(ReflectiveTypeAdapterFactory.java:117)
+    at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:217)
+    at com.google.gson.Gson.fromJson(Gson.java:861)
+    at com.google.gson.Gson.fromJson(Gson.java:826)
+    at com.google.gson.Gson.fromJson(Gson.java:775)
+    at com.google.gson.Gson.fromJson(Gson.java:747)
+    at notificador.domain.config.factory.GsonFactoryTest.dateShouldBeParsed(GsonFactoryTest.java:18)
+    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:497)
+    at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+    at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+    at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+    at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+    at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+    at org.apache.maven.surefire.junit4.JUnit4Provider.execute(JUnit4Provider.java:252)
+    at org.apache.maven.surefire.junit4.JUnit4Provider.executeTestSet(JUnit4Provider.java:141)
+    at org.apache.maven.surefire.junit4.JUnit4Provider.invoke(JUnit4Provider.java:112)
+    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:497)
+    at org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:189)
+    at org.apache.maven.surefire.booter.ProviderFactory$ProviderProxy.invoke(ProviderFactory.java:165)
+    at org.apache.maven.surefire.booter.ProviderFactory.invokeProvider(ProviderFactory.java:85)
+    at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:115)
+    at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:75)
+Caused by: java.text.ParseException: Failed to parse date [""2016-01-08T17:29:05.730-02']: null
+    at notificador.domain.config.factory.UtcDateTypeAdapter.parse(UtcDateTypeAdapter.java:234)
+    at notificador.domain.config.factory.UtcDateTypeAdapter.read(UtcDateTypeAdapter.java:57)
+    ... 37 more
+```
+
+Am I doing something wrong?
+ =||= "timezones without minutes should be valid according RFC3339"According to RFC, the format is:
+
+time-numoffset    = (""+"" / ""-"") time-hour [["":""] time-minute]
+
+it fixes #768 "Dan Souzapaniko002/03/16, 04:23:52 AM
+796797OSGi manifest headers removed?"The OSGi headers were removed as part of https://github.com/google/gson/commit/2016e9553eb946a09a9e70d83d31f4e8da675805
+
+These should be restored"Restore OSGi manifest headers"Commit 2016e95 removed the necessary MANIFEST.MF headers for Gson to
+resolve in an OSGi environment. This patch restores them.
+
+Fixes #796"Sean Brightseanbright02/25/16, 05:08:20 AM
+925926Prevent Proguard from stripping interface info from TypeAdapterFactory implementations"Proguard strips away interface information from `TypeAdapterFactory` implementations. This leaves `@JsonAdapter(MyTypeAdapterFactory.class)` useless as `JsonAdapterAnnotationTypeAdapterFactory` doesn't detect the class to be a `TypeAdapterFactory` instance. See https://github.com/google/gson/blob/193349f4aa7eecf43cc6ebf104e218e704db21d9/gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java#L60
+
+The solution would involve updating the proguard snippet to keep all `TypeAdapterFactory` implementations""Now that I think about it, this applies to `JsonSerializer` and `JsonDeserializer` instances as well
+ =||= Ok. Can you send another PR? Thanks.
+ =||= The merged PR #926 already keeps `JsonSerializer` and `JsonDeserializer` implementations.
+Cheers! 😊
+ =||= "Prevent Proguard from stripping interface info from @JsonAdapter classes"Previously after Proguard, the classes would no longer implement the interfaces, leading to `JsonAdapterAnnotationTypeAdapterFactory` throwing.
+
+Fixes #925"Chaitanya PramodChaitanyaPramod09/14/16, 11:54:11 PM
+10901093JsonWriter#value(java.lang.Number) can be lenient, but JsonWriter#value(double) can't,"In lenient mode, JsonWriter#value(java.lang.Number) can write pseudo-numeric values like `NaN`, `Infinity`, `-Infinity`:
+```java
+    if (!lenient
+        && (string.equals(""-Infinity"") || string.equals(""Infinity"") || string.equals(""NaN""))) {
+      throw new IllegalArgumentException(""Numeric values must be finite, but was "" + value);
+    }
+```
+
+But JsonWriter#value(double) behaves in different way: 
+```java
+    if (Double.isNaN(value) || Double.isInfinite(value)) {
+      throw new IllegalArgumentException(""Numeric values must be finite, but was "" + value);
+    }
+```
+
+So, while working with streaming, it's impossible to write semi-numeric value without boxing a double (e. g. `out.value((Number) Double.valueOf(Double.NaN))`).
+
+I think, this should be possible, because boxing gives worse performance."Can you create a Pull Request with a JUnit test that fails? Even better would be a fix that makes the test pass. Thanks. =||= value(double) can write NaN and infinite values when lenient, as value(Number) doesFixes #1090.MikeMiha-x6405/31/17, 04:50:45 PM
+13551363JsonElement#getAsCharacter()"JsonElement 
+public char getAsCharacter()
+“convenience method to get this element as a primitive character value.”
+
+I expected calling getAsCharacter would convert an integer to its character value. Instead, it returns the first character of the toString().
+
+```
+JsonPrimitive jp = new JsonPrimitive(100);
+System.out.println(jp.getAsCharacter());     Output: 1
+System.out.println((char) jp.getAsInt());    Output: d
+```
+
+Perhaps the documentation should be more descriptive.""PR welcome.
+
+I would probably deprecate the entire method… =||= "Deprecate JsonElement.getAsCharacter.Closes #1355.Eric CochranNightlyNexus07/30/18, 05:44:22 PM
+13901391Recursive TypeVariable resolution results in ClassCastException when type var is referenced multiple times"The recursive type variable resolution protections put into place in Gson 2.8.2 to fix #1128 does not work if a TypeVariable is referenced multiple times.
+
+Example failing code:
+```
+    enum TestEnum { ONE, TWO, THREE }
+
+    private static class TestEnumSetCollection extends SetCollection<TestEnum> {}
+
+    private static class SetCollection<T> extends BaseCollection<T, Set<T>> {}
+
+    private static class BaseCollection<U, C extends Collection<U>>
+    {
+        public C collection;
+    }
+```
+
+When used with the following code to unmarshal
+```
+TestEnumSetCollection withSet = gson.fromJson(""{\""collection\"":[\""ONE\"",\""THREE\""]}"", TestEnumSetCollection.class);
+```
+The enum values are unmarshaled as `String` instances instead of as `TestEnum` instances, causing `ClassCastException` to be raised at runtime.  This is due to the fact that the `visitedTypeVariables` map receives an entry for `T`, resolves it properly, and then upon subsequent attempt to resolve `T` fails, since the `visitedTypeVariables` set indicates that `T` has already been resolved."Fix issue with recursive type variable protections to fix #1390"When a type variable is referenced multiple times it needs to resolve to the same value.  Previously, the second attempt would abort resolution early in order to protect against infinite recursion.
+
+NOTE: I could use some scrutiny on this as I don't fully understand the implications of all the code branches.  This commit does resolve the issue but stylistically I'm not really sold on breaking out of the while loop in order to capture the final result for subsequent resolution attempts.
+
+Fixes #1390 "Mike Cumingsmcumings08/02/21, 11:43:19 PM
+16011603OSGi metadata on 2.8.6 requires Java 9 or greater"gson 2.8.6's `MANIFEST.MF` includes the following line:
+```
+Require-Capability: osgi.ee;filter:=""(&(osgi.ee=JavaSE)(version=9.0))""
+```
+
+And so it requires Java 9 (or greater, as `osgi.ee` is typically populated with all lesser versions too) and so refuses to install on Java 8 (or below).""2.8.5's `MANIFEST.MF` has:
+```
+Require-Capability: osgi.ee;filter:=""(&(osgi.ee=JavaSE)(version=1.6))""
+``` =||= "Fix OSGi metadata generation to work on JavaSE < 9"Fixes #1601 #1602
+
+  - explicitly specifies `Require-Capability: osgi.ee` for 1.6 or greater to disable `bnd`'s autogeneration which is deceived by the `module-info.class` file
+  - drop the JavaSE 1.5 reference since it hasn't been true for years (#790)
+  - remove the unused `org.apache.felix:maven-bundle-plugin` plugin reference
+
+Here are the differences in the resulting manifests:
+```diff
+--- gson-manifest-2.8.6	2019-10-31 12:24:51.000000000 -0400
++++ gson-manifest-2.8.7-SNAPSHOT	2019-10-31 11:49:39.000000000 -0400
+@@ -1,23 +1,22 @@
+ Manifest-Version: 1.0
+ Archiver-Version: Plexus Archiver
+-Created-By: 11.0.4 (Oracle Corporation)
+-Built-By: inder
++Created-By: 11.0.4 (AdoptOpenJDK)
++Built-By: bsd
+ Build-Jdk: 11.0.4
+-Bnd-LastModified: 1570215293550
++Bnd-LastModified: 1572539070059
+ Bundle-ContactAddress: https://github.com/google/gson
+ Bundle-Description: Gson JSON library
+ Bundle-ManifestVersion: 2
+ Bundle-Name: Gson
+-Bundle-RequiredExecutionEnvironment: J2SE-1.5, JavaSE-1.6, JavaSE-1.7, J
+- avaSE-1.8
++Bundle-RequiredExecutionEnvironment: JavaSE-1.6, JavaSE-1.7, JavaSE-1.8
+ Bundle-SymbolicName: com.google.gson
+ Bundle-Vendor: Google Gson Project
+-Bundle-Version: 2.8.6
++Bundle-Version: 2.8.7.201910311624
+ Export-Package: com.google.gson;uses:=""com.google.gson.reflect,com.googl
+- e.gson.stream"";version=""2.8.6"",com.google.gson.annotations;version=""2.8
+- .6"",com.google.gson.reflect;version=""2.8.6"",com.google.gson.stream;vers
+- ion=""2.8.6""
++ e.gson.stream"";version=""2.8.7"",com.google.gson.annotations;version=""2.8
++ .7"",com.google.gson.reflect;version=""2.8.7"",com.google.gson.stream;vers
++ ion=""2.8.7""
+ Import-Package: com.google.gson.annotations
+-Require-Capability: osgi.ee;filter:=""(&(osgi.ee=JavaSE)(version=9.0))""
++Require-Capability: osgi.ee;filter:=""(&(osgi.ee=JavaSE)(version=1.6))""
+ Tool: Bnd-4.0.0.201805111645
+ 
+```"Brian de Alwisbriandealwis11/04/19, 11:37:47 PM
+16061607Fix Travis CI"# Description
+Travis CI fails for all builds. The relevant Travis log part is probably:
+```
+openjdk version ""9.0.4""
+OpenJDK Runtime Environment (build 9.0.4+11)
+OpenJDK 64-Bit Server VM (build 9.0.4+11, mixed mode)
+$ javac -J-Xmx32m -version
+javac 9.0.4
+3.54s$ mvn -f gson install -DskipTests=true
+[INFO] Scanning for projects...
+Downloading from google-maven-central: https://maven-central.storage-download.googleapis.com/repos/central/data/org/sonatype/oss/oss-parent/7/oss-parent-7.pom
+Downloading from sonatype: https://oss.sonatype.org/content/repositories/releases/org/sonatype/oss/oss-parent/7/oss-parent-7.pom
+Downloading from sonatype-apache: https://repository.apache.org/content/repositories/releases/org/sonatype/oss/oss-parent/7/oss-parent-7.pom
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[FATAL] Non-resolvable parent POM for com.google.code.gson:gson-parent:2.8.6-SNAPSHOT: Could not transfer artifact org.sonatype.oss:oss-parent:pom:7 from/to google-maven-central (https://maven-central.storage-download.googleapis.com/repos/central/data/): sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target and 'parent.relativePath' points at wrong local POM @ com.google.code.gson:gson-parent:2.8.6-SNAPSHOT, /home/travis/build/google/gson/pom.xml, line 6, column 11
+```
+
+It appears it tries all configured repositories and then fails:
+1. maven-central.storage-download.googleapis.com
+2. oss.sonatype.org (this just redirects to central!)
+3. repository.apache.org
+
+It looks like Maven mixes the exception messages, but the actual problem is:
+> sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+
+If we now compare the last [successful build](https://travis-ci.org/google/gson/jobs/541365646) with the [first known failing](https://travis-ci.org/google/gson/jobs/583845328) (there might have been earlier ones through pull requests, but Travis does not show them), we will see:
+
+<table>
+    <thead>
+        <tr>
+            <th>Successful</th>
+            <th>Failed</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+<pre>
+java version ""9.0.1""
+Java(TM) SE Runtime Environment (build 9.0.1+11)
+</pre>
+            </td>
+            <td>
+<pre>
+openjdk version ""9.0.4""
+OpenJDK Runtime Environment (build 9.0.4+11)
+</pre>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+And indeed there is [JDK-8189357](https://bugs.openjdk.java.net/browse/JDK-8189357) which describes that the `cacerts` file for OpenJDK is empty.  
+To fix this a different truststore has to be specified, the certificates have to be imported, or you could switch to OpenJDK > 9 (see JEP [319](https://openjdk.java.net/jeps/319)), e.g. 11 which runs the build successfully as well and is also LTS."Thanks. Can you send a PR that fixes the issue?  =||= Done, see #1607, that seems to fix the problem =||= Use OpenJDK 11 for Travis CIFixes #1606 (?)Marcono123411/05/19, 06:29:12 PM
+16291707Remove support for java.sql types"The original idea #134 was OK in 2015. Since then, Java got modular support and java.sql is no longer available by default. This is causing sporadic issues in random places: 
+
+- https://github.com/google/gson/issues/134#issuecomment-410848727 
+- [java.lang.ClassNotFoundException: java.sql.Time](https://travis-ci.org/dernasherbrezon/jsp-openapi/builds/620333411)
+- [stackoverflow](https://stackoverflow.com/search?q=gson+java.sql)
+- [gson pom.xml](https://github.com/google/gson/blob/master/pom.xml#L84)
+
+Would be great to deprecate support for java.sql and suggest writing type adapters instead.""https://github.com/google/gson/blob/1a9469a8c5aa31deacd36b3d15347f873ce7e889/gson/src/main/java/module-info.java#L11
+
+Would have to be changed as well, right? =||= I am not as familiar with Java 10+ (as have stayed mostly with Android). So, if someone was willing to write a PR that maintains full backward compatibilty, I will take a look. =||= Lol, it can't be backward compatible because of ""Remove support"". =||= I think it can be backwards compatible by using an optional module dependency (`requires static`) and then not trying to load any SQL classes if they are not present.
+I have a local branch which should hopefully solve this, but I am not confident enough in it, so it will take a few days before I will create a pull request. =||= Wonderful! 
+Please write some tests as well. Backward compatibility is paramount for Gson as lots and lots of projects depend on it. =||= Created #1707 now. Though I am not that familiar with the module system so any feedback is appreciated! =||= "Make dependency on java.sql optional"Note: This is based on #1656
+Fixes #1629
+
+Makes the dependency on the `java.sql` module optional. If its classes are present at runtime, the respective type adapters will be used, otherwise Gson will not try to load the classes and will therefore not fail with a `ClassNotFoundException` anymore. The entry point for all SQL type adapters is now `SqlTypesSupport`.
+
+I am however, not that familiar with the module system so it would be good if others who are more familiar with it can check if this is a sane implementation.
+
+Especially #1500 (@Degubi) is confusing me because from what I understood about the JPMS `requires transitive` is only so modules depending on Gson would also be ""reading"" `java.sql`, which however makes no sense because Gson does not expose these types publicly anywhere, so it should not provide them transitively. To my understanding `requires` should have been enough to require `java.sql` being present at runtime, however based on the `ClassNotFoundException` reports this was not the case?
+Or are they using tools (as it is the case [here](https://stackoverflow.com/q/57222110) which break the module system)? Though that would be a rather common issue then, see the question [""java.sql.Time exception""](https://stackoverflow.com/q/50877484).
+
+Also pinging @nicolaiparlog, if you have any spare time, any hints regarding the JPMS would be appreciated :)
+Sorry to pester you in case you don't have any time."Marcono123408/25/21, 06:26:59 PM
+17971949There is a vulnerability in Guava: Google Core Libraries for Java(18.0) ,upgrade recommended"https://github.com/google/gson/blob/ceae88bd6667f4263bbe02e6b3710b8a683906a2/proto/pom.xml#L69-L74
+
+CVE-2018-10237
+
+Recommended upgrade version：1.0.1
+latest version：29.0-jre"@eamonnmcmanus https://snyk.io/vuln/maven:com.google.guava%3Aguava =||= Update dependencies in proto/pom.xml."Also use `GeneratedMessageV3` rather than `GeneratedMessage`, consistent with recent versions of `protoc`.
+
+Closes #1797."Éamonn McManuseamonnmcmanus09/02/21, 12:11:48 AM

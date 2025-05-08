@@ -1,0 +1,172 @@
+Issue_NumberPR_NumberIssue_TitleIssue_BodyIssue_CommentsPR_TitlePR_BodyPR_CommentsPR_Author_NamePR_Author_UsernamePR_Closed_Date
+753754PeerAwareInstanceRegistryImpl.syncUp blocks unecessarily"https://github.com/Netflix/eureka/blob/f2d9dbd886c2644d07ed5de6451c142a995af225/eureka-core/src/main/java/com/netflix/eureka/registry/PeerAwareInstanceRegistryImpl.java#L206
+
+If its the last (or only) iteration of the loop, there's no need to sleep, because you won't be retrying again. To highlight the issue, if I wanted to implement a server that tries to fetch registry from peers once (with eureka.servier.registrySyncRetries=1), but in case their are no other peers alive, continue startup, we'd block for an additional 30 seconds before startup can complete. "Sleep during syncUp only if necessaryFixes #753Will Tranwilliam-tran02/24/16, 11:42:01 PM
+873874Eureka Client cannot make HTTPS requests to servers that use multiple certificates via SNI"EurekaJerseyClientImpl uses deprecated, pre HTTPClient 4.3 APIs to create the SSLSocketFactory used in MonitoredConnectionManager [[1]](https://github.com/Netflix/eureka/blob/v1.6.0/eureka-client/src/main/java/com/netflix/discovery/shared/transport/jersey/EurekaJerseyClientImpl.java#L222). Support for https://en.wikipedia.org/wiki/Server_Name_Indication was introduced in Apache HttpClient 4.3.2 [[2]](https://hc.apache.org/news.html). When using the deprecated APIs, requests to servers that are protected with multiple certificates, which is typical of environments with many applications behind a single load balancer, will fail.
+
+This can be demonstrated by setting the serviceUrl to `https://api.google.com/`. If the SSL handshake doesn't do SNI properly, the client will get the certificate for `www.google.com`, and hostname verification will fail with this exception. If SNI succeeds we won't see this exception (but we'll see another Eureka specific exception obviously).
+
+```
+2016-11-15 17:12:33.841 ERROR 65408 --- [nfoReplicator-0] c.n.d.s.t.d.RedirectingEurekaHttpClient  : Request execution error
+
+com.sun.jersey.api.client.ClientHandlerException: javax.net.ssl.SSLException: Certificate for <api.google.com> doesn't match any of the subject alternative names: [www.google.com]
+	at com.sun.jersey.client.apache4.ApacheHttpClient4Handler.handle(ApacheHttpClient4Handler.java:187) ~[jersey-apache-client4-1.19.1.jar:1.19.1]
+	at com.sun.jersey.api.client.filter.GZIPContentEncodingFilter.handle(GZIPContentEncodingFilter.java:123) ~[jersey-client-1.19.1.jar:1.19.1]
+	at com.netflix.discovery.EurekaIdentityHeaderFilter.handle(EurekaIdentityHeaderFilter.java:27) ~[eureka-client-1.4.11.jar:1.4.11]
+
+...
+
+Caused by: javax.net.ssl.SSLException: Certificate for <api.google.com> doesn't match any of the subject alternative names: [www.google.com]
+	at org.apache.http.conn.ssl.AbstractVerifier.verify(AbstractVerifier.java:165) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.BrowserCompatHostnameVerifier.verify(BrowserCompatHostnameVerifier.java:61) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.AbstractVerifier.verify(AbstractVerifier.java:141) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.AbstractVerifier.verify(AbstractVerifier.java:114) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.SSLSocketFactory.verifyHostname(SSLSocketFactory.java:580) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.SSLSocketFactory.connectSocket(SSLSocketFactory.java:554) ~[httpclient-4.5.2.jar:4.5.2]
+	at org.apache.http.conn.ssl.SSLSocketFactory.connectSocket(SSLSocketFactory.java:412) ~[httpclient-4.5.2.jar:4.5.2]
+	at 
+...
+``` 
+
+[1] https://github.com/Netflix/eureka/blob/v1.6.0/eureka-client/src/main/java/com/netflix/discovery/shared/transport/jersey/EurekaJerseyClientImpl.java#L222
+[2] https://hc.apache.org/news.html"Support HTTPS requests to servers that use multiple certificates"Use Apache HttpClient 4.3+ SSL handling which supports SNI, and
+adapt it to the deprecated pre 4.3 API.
+
+Fixes #873"Will Tranwilliam-tran11/21/16, 08:23:21 PM
+933934409 Conflict Response does not send the InstanceInfo back to the client"In `InstanceResource`, when renewing a lease and `lastDirtyTimestamp` is not null, the code will return a 409 Conflict to the client in a certain situation. However, `PeerReplicationResource` will not return the `InstanceInfo` in the body of the response unless the status code is 200.
+
+On the client side of things, `PeerEurekaNode` needs this `InstanceInfo` to execute the method `syncInstancesIfTimestampDiffers`. Since it's never sent back from the server, this code never gets executed and you get `The replication of task XXX/i-XXX@XXX failed with response code 409` logs until you fix it manually.
+
+PR submitted."Sorry for the amended commits noise :) =||= Add the InstanceInfo to the response in case of 409 status code"Fixes #933.
+
+Thanks!"Jacques-Etienne Beaudetjebeaudet05/31/17, 11:27:12 PM
+975976Remove checked exceptions from @PostConstruct methods"classes listed as below should remove the checked exceptions from their `@PostConstruct` methods and `@PreDestroy` methods since it fails from deploying eureka-server onto Payara.
+```
+eureka-core/src/main/java/com/netflix/eureka/DefaultEurekaServerContext.java
+eureka-core/src/main/java/com/netflix/eureka/aws/AwsBinderDelegate.java
+eureka-core/src/main/java/com/netflix/eureka/aws/EIPManager.java
+eureka-core/src/main/java/com/netflix/eureka/aws/ElasticNetworkInterfaceBinder.java
+eureka-core/src/main/java/com/netflix/eureka/aws/Route53Binder.java
+```"975-Remove-checked-exceptions-from-@PostConstruct-methodsfixes #975 Mert Caliskanmulderbaba04/25/18, 12:29:05 AM
+11371138Congestion errors during replication are not monitored by metrics"**What I do:**
+Introduce some networking or other issues which lead to massive congestion errors (HTTP 503 or timeouts).
+**What I expect to see:**
+There is a counter for such errors
+**What I see instead:**
+There is no such counter, only `numberOfSuccessfulExecutions`, `numberOfTransientError` and `numberOfPermanentError` are in place."EUREKA-1137 Add counter for congestion issuesFixes #1137 Mikhail Gromovmgtriffid10/20/18, 10:24:42 PM
+12221223Upgrade to Xstream 1.4.11.1 due to reopening of vulnerability CVE-2013-7285"Looks like the old vulnerability in CVE-2013-7284 was not fully addressed by Xstream version 1.4.10.  This old version is showing up in our vulnerability scans. Can we upgrade to the newer  xstream version 1.4.11.1
+
+Links to release notes/vulnerability fixes:
+https://x-stream.github.io/changes.html"Another option is to completely remove xstream as proposed in #1074 =||= I agree with @mattnelson #1074 would be the long term fix, this one being a quick easy fix. =||= Thanks for the report @ankurbhakta and the PR @spencergibb, appreciate it. No emotional attachment to Xstream but we do not want to break anyone so any solution will need to be compatible. =||= Upgrades xstream to 1.4.11.1fixes #1222Spencer Gibbspencergibb07/01/19, 10:10:38 PM
+12361237AbstractInstanceRegistry$CircularQueue is inneficientI have noticed that `AbstractInstanceRegistry$CircularQueue` implementation is quite inefficient due to `ConcurrentLinkedQueue#size`, which is linear time complexity of storage size, effectively making add element O(n).Optimized CircularQueue by using ArrayBlockingQueue with constant time size implementation"Since `AbstractInstanceRegistry` already have synchronization on `recentRegisteredQueue` and `recentCanceledQueue` it's safe to change `CircularQueue` implementation to extend `LinkedList` with constant time `size()`.
+
+Benchmark:
+```
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
+
+import java.util.concurrent.TimeUnit;
+
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.SECONDS)
+@State(Scope.Benchmark)
+@Fork(value = 2)
+@Warmup(iterations = 3, batchSize = 10000)
+@Measurement(iterations = 3, batchSize = 10000)
+public class CircularQueueBenchmark {
+
+    private final EurekaCircularQueue<String> eureka = new EurekaCircularQueue<>(10000);
+    private final EurekaCircularQueueLinkedList<String> eurekaLinkedList = new EurekaCircularQueueLinkedList<>(10000);
+
+    @Setup(Level.Iteration)
+    public void setup(){
+        eureka.clear();
+        eurekaLinkedList.clear();
+    }
+
+    @Benchmark
+    public EurekaCircularQueue<String> eureka() {
+        synchronized (eureka) {
+            eureka.add(""something"");
+        }
+        return eureka;
+    }
+
+    @Benchmark
+    public EurekaCircularQueueLinkedList<String> eurekaLinkedList() {
+        synchronized (eurekaLinkedList) {
+            eurekaLinkedList.add(""something"");
+        }
+        return eurekaLinkedList;
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+                .include(CircularQueueBenchmark.class.getSimpleName())
+                .build();
+
+        new Runner(opt).run();
+    }
+}
+```
+Results:
+```
+Benchmark                                 Mode  Cnt     Score     Error  Units
+CircularQueueBenchmark.eureka            thrpt    6     3.297 ±   0.005  ops/s
+CircularQueueBenchmark.eurekaLinkedList  thrpt    6  3893.782 ± 110.320  ops/s
+```
+
+fixes #1236"Arthur Gavlyukovskiygavlyukovskiy09/30/19, 04:51:17 PM
+12661271"Where to update the ""expectedNumberOfClientsSendingRenews"" when we evict a instance?""When I look at eureka has been a source of confusion in ""selfPreservationMode"", I saw the sorce code with mater branch,
+when we see register or cancel method, there will be update ""expectedNumberOfClientsSendingRenews"", just like the code:
+
+```java
+// The lease does not exist and hence it is a new registration
+synchronized (lock) {
+    if (this.expectedNumberOfClientsSendingRenews > 0) {
+        // Since the client wants to register it, increase the number of clients sending renews
+        this.expectedNumberOfClientsSendingRenews = this.expectedNumberOfClientsSendingRenews + 1;
+        updateRenewsPerMinThreshold();
+    }
+}
+```
+
+i have read the code with ""evict"" method in ""AbstractInstanceRegistry"" class, but i didn't find where to update the ""expectedNumberOfClientsSendingRenews"" when we evict a instance according to a timed task. 
+
+can you tell me where to update the ""expectedNumberOfClientsSendingRenews"" when we evict a instance ? "" I saw the same question, but it seems that the problem has not been solved。
+see detail：https://github.com/spring-cloud/spring-cloud-netflix/issues/2407 =||= Trying to understand whether this was intentional (and why) but so far it looks like a bug to me. =||= "decrement expectedNumberOfClientsSendingRenews for expired leases"Moves the logic that decrements the expected number of clients into
+`internalCancel` - this should ensure that we're calling it both for
+explicit cancels as well as well as when the instance lease expires.
+
+Fixes #1266"Snow Pettersensnowp01/27/20, 06:28:33 PM
+12761289Upgrade gradle"Running recent intellij with java 11 runtime
+```
+Cannot determine classpath for resource 'java/sql/SQLException.class' from location 'jrt:/java.sql/java/sql/SQLException.class'.
+
+The project uses Gradle 2.10 which is incompatible with IDEA running on Java 10 or newer.
+See details at https://github.com/gradle/gradle/issues/8431
+Possible solution:
+ - Upgrade Gradle wrapper to 4.8.1 version and re-import the project
+```"ping :-) =||= update to latest gradle wrapper"Updates the gradle wrapper to 6.3, the neubla plugin to latest version
+and replaces the jetty module with org.gretty as the jetty module has
+been removed.
+
+Move to org.gretty is motivated by https://stackoverflow.com/questions/50119925/error-while-replacing-jetty-plugin-to-gretty-plugin-gradle
+
+Fixes #1276"Snow Pettersensnowp04/30/20, 10:17:32 PM
+13261333High Severity Vulnerabilities due to use of jackson-databind-2.9.10.4.jar"The jar jackson-databind-2.9.10.4.jar is used by eureka_server. It's reported to have Vulnerabilities: CVE-2020-14060, CVE-2020-14061, CVE-2020-14062 and CVE-2020-14195.
+
+The proposed solution is to upgrade jackson-databind to version 2.10.0 or higher."bump jackson-databind do 2.9.10.6Fixes #1326Ivan Porto Carrerocasualjim09/14/20, 05:26:24 PM
